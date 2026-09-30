@@ -1,3 +1,4 @@
-// URL del backend. Vacío = mismo dominio (útil con el proxy de desarrollo).
-// En Docker este archivo se genera al arrancar a partir de la variable API_URL.
+// URL pública del backend (sin /api al final).
+// Vercel: reemplaza el valor por la URL de tu API (Render, Railway...) y vuelve a desplegar.
+// Vacío = mismo origen (solo sirve en desarrollo con proxy.conf.json).
 window.__CONFIG__ = { apiUrl: '' };
