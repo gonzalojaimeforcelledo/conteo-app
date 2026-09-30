@@ -1,4 +1,4 @@
-// URL pública del backend (sin /api al final).
-// Vercel: reemplaza el valor por la URL de tu API (Render, Railway...) y vuelve a desplegar.
-// Vacío = mismo origen (solo sirve en desarrollo con proxy.conf.json).
-window.__CONFIG__ = { apiUrl: '' };
+// URL pública del backend en Railway (sin /api ni / al final).
+// OJO: no usar *.railway.internal (red privada, el navegador no la alcanza).
+// Si Railway te asignó otro dominio en Settings → Networking, cámbialo aquí y vuelve a desplegar.
+window.__CONFIG__ = { apiUrl: 'https://conteo-backend-production.up.railway.app' };

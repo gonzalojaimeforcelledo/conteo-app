@@ -2,7 +2,7 @@
   "buildCommand": "npx ng build --configuration production",
   "outputDirectory": "dist/conteo-actas/browser",
   "headers": [
-    { "source": "/config.js", "headers": [{ "key": "Cache-Control", "value": "no-store" }] },
-    { "source": "/index.html", "headers": [{ "key": "Cache-Control", "value": "no-store" }] }
+    { "source": "/config.js", "headers": [{ "key": "Cache-Control", "value": "no-store, max-age=0" }] },
+    { "source": "/index.html", "headers": [{ "key": "Cache-Control", "value": "no-store, max-age=0" }] }
   ]
 }

@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { SIN_BACKEND_CONFIGURADO } from '../../core/config';
 import { AuthService } from '../../core/auth.service';
 
 @Component({
@@ -20,6 +21,11 @@ import { AuthService } from '../../core/auth.service';
         <h1>Ingreso del personal</h1>
         <p class="muted">Solo para digitadores, supervisores y administradores autorizados.</p>
 
+        @if (sinBackend) {
+          <div class="alert alert--error" role="alert">
+            Falta configurar la URL del backend en <strong>config.js</strong>. Sin ella el ingreso no funciona.
+          </div>
+        }
         <form (ngSubmit)="entrar()" class="form" novalidate>
           <div class="field">
             <label for="u">Usuario</label>
@@ -41,11 +47,6 @@ import { AuthService } from '../../core/auth.service';
             {{ cargando() ? 'Verificando…' : 'Ingresar' }}
           </button>
         </form>
-
-        <details class="demo">
-          <summary>Usuarios iniciales de este equipo</summary>
-          <p>admin / admin2026, supervisor / super2026, digitador / digita2026. Cámbialas en Usuarios antes de la jornada.</p>
-        </details>
       </section>
     </main>
   `,
@@ -66,8 +67,6 @@ import { AuthService } from '../../core/auth.service';
     .pass__btn { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); min-height: 36px; padding: 0 10px; border: 0; border-radius: 8px;
       background: transparent; color: var(--gray-700); font: 600 var(--text-sm) var(--font-body); cursor: pointer; }
     .pass__btn:hover { background: var(--gray-100); }
-    .demo { margin-top: 28px; font-size: var(--text-sm); color: var(--color-text-muted); }
-    .demo summary { cursor: pointer; font-weight: 600; min-height: 32px; }
     @media (max-width: 760px) {
       .login { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
       .side { padding: 24px 20px; flex-direction: row; align-items: center; }
@@ -83,6 +82,7 @@ export class LoginComponent {
   private auth = inject(AuthService);
   private router = inject(Router);
   volver = input<string>();
+  readonly sinBackend = SIN_BACKEND_CONFIGURADO;
 
   usuario = '';
   password = '';

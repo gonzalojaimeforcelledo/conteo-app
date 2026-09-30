@@ -18,3 +18,7 @@ export function wsUrl(): string {
   const base = API_BASE || location.origin;
   return base.replace(/^http/, 'ws') + '/ws';
 }
+
+/** true si estamos publicados (no en localhost) sin URL de backend: las llamadas irían al propio hosting. */
+export const SIN_BACKEND_CONFIGURADO =
+  typeof location !== 'undefined' && !API_BASE && !['localhost', '127.0.0.1'].includes(location.hostname);
