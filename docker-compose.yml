@@ -5,6 +5,6 @@ services:
     build: .
     restart: unless-stopped
     environment:
-      API_URL: ${API_URL:-http://localhost:8080}
+      API_URL: ${API_URL:-https://conteo-backend-production-3650.up.railway.app}
     ports:
       - "8081:80"

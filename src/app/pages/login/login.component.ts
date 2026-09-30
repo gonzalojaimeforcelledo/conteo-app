@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { SIN_BACKEND_CONFIGURADO } from '../../core/config';
+import { API_BASE, SIN_BACKEND_CONFIGURADO } from '../../core/config';
 import { AuthService } from '../../core/auth.service';
 
 @Component({
@@ -27,6 +27,7 @@ import { AuthService } from '../../core/auth.service';
           </div>
         }
         <form (ngSubmit)="entrar()" class="form" novalidate>
+          <p class="servidor">Servidor: {{ servidor }}</p>
           <div class="field">
             <label for="u">Usuario</label>
             <input id="u" name="u" class="input" autocomplete="username" autocapitalize="none" spellcheck="false"
@@ -51,6 +52,7 @@ import { AuthService } from '../../core/auth.service';
     </main>
   `,
   styles: `
+    .servidor { font-size: var(--text-xs); color: var(--color-text-muted); word-break: break-all; margin: 0; }
     .login { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); }
     .side { background: var(--red-600); color: var(--white); padding: 48px; display: flex; flex-direction: column; justify-content: flex-end; gap: 12px; }
     .mark { width: 56px; height: 56px; border-radius: 14px; background: var(--white); display: grid; align-content: center; gap: 5px; padding: 0 12px; margin-bottom: auto; }
@@ -83,6 +85,7 @@ export class LoginComponent {
   private router = inject(Router);
   volver = input<string>();
   readonly sinBackend = SIN_BACKEND_CONFIGURADO;
+  readonly servidor = API_BASE || '(mismo dominio)';
 
   usuario = '';
   password = '';
