@@ -1,0 +1,169 @@
+<div class="page-head">
+  <div>
+    <a routerLink="/admin/actas" class="volver"><app-icon name="arrowLeft" /> Actas</a>
+    <h1>{{ editando() ? 'Corregir acta ' + f().numeroActa : 'Registrar acta' }}</h1>
+    @if (meta(); as m) {
+      <p>Registrada por {{ m.registrado }}@if (m.editado) {. Última edición: {{ m.editado }}}.</p>
+    } @else {
+      <p>Presiona Enter para pasar al siguiente campo. Al final, Enter guarda y abre un acta nueva.</p>
+    }
+  </div>
+</div>
+
+<div class="grid" (keydown)="siguiente($event)">
+  <div class="col">
+    <!-- Identificación -->
+    <section class="panel">
+      <div class="panel__head"><h2>Identificación del acta</h2></div>
+      <div class="panel__body ident">
+        <div class="field">
+          <label for="numero">N° de acta</label>
+          <input #primero id="numero" class="input input--mono" data-nav autocomplete="off" autocapitalize="characters"
+                 [value]="f().numeroActa" (input)="campo('numeroActa', $any($event.target).value)"
+                 [attr.aria-invalid]="intentado() && !f().numeroActa.trim()">
+        </div>
+        <div class="field field--wide">
+          <label for="colegio">Local de votación</label>
+          <select id="colegio" class="select" data-nav [value]="f().colegioId ?? ''" (change)="colegioElegido($any($event.target).value)"
+                  [attr.aria-invalid]="intentado() && !colegio()">
+            <option value="">Selecciona un local</option>
+            @for (c of data.colegios(); track c.id) {
+              <option [value]="c.id" [selected]="c.id === f().colegioId">{{ c.codigo }}  {{ c.nombre }}</option>
+            }
+          </select>
+          @if (colegio(); as c) {
+            <span class="field__hint">{{ mesasUsadas() }} de {{ c.totalMesas }} mesas ya registradas en este local.</span>
+          }
+        </div>
+        <div class="field">
+          <label for="mesa">Mesa</label>
+          <input id="mesa" class="input input--mono" data-nav inputmode="numeric" autocomplete="off"
+                 [value]="f().mesa" (input)="campo('mesa', $any($event.target).value)"
+                 [attr.aria-invalid]="intentado() && !f().mesa.trim()">
+        </div>
+        <div class="field">
+          <label for="habiles">Electores hábiles</label>
+          <input id="habiles" class="input input--num" data-nav inputmode="numeric" pattern="[0-9]*" autocomplete="off"
+                 [value]="mostrar(f().totalElectoresHabiles)" (input)="numero('totalElectoresHabiles', $event)"
+                 [attr.aria-invalid]="intentado() && !f().totalElectoresHabiles">
+        </div>
+        <div class="field">
+          <label for="votantes">Total de votantes</label>
+          <input id="votantes" class="input input--num" data-nav inputmode="numeric" pattern="[0-9]*" autocomplete="off"
+                 [value]="mostrar(f().totalVotantes)" (input)="numero('totalVotantes', $event)">
+          <span class="field__hint">Electores que votaron, según el acta.</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Votos -->
+    <section class="panel">
+      <div class="panel__head">
+        <h2>Votos</h2>
+        <span class="muted num">Válidos: {{ validos() | number }}</span>
+      </div>
+      <ol class="votos">
+        @for (c of data.candidatos(); track c.id) {
+          <li class="voto">
+            <span class="voto__n num" aria-hidden="true">{{ c.ordenLista }}</span>
+            <img class="voto__logo" [src]="c.logo" alt="" width="44" height="44">
+            <label class="voto__who" [for]="'c' + c.id">
+              <strong>{{ c.partidoPolitico }}</strong>
+              <small><img class="voto__foto" [src]="c.foto" alt="" width="20" height="20">{{ c.nombresCompletos }}</small>
+            </label>
+            <input [id]="'c' + c.id" class="input input--num voto__in" data-nav inputmode="numeric" pattern="[0-9]*" autocomplete="off"
+                   placeholder="0" [value]="mostrar(f().votos[c.id])" (input)="voto(c.id, $event)" (focus)="$any($event.target).select()">
+          </li>
+        }
+        <li class="voto voto--esp">
+          <span class="voto__n" aria-hidden="true"></span>
+          <span class="voto__logo voto__logo--vacio" aria-hidden="true"></span>
+          <label class="voto__who" for="blanco"><strong>Votos en blanco</strong></label>
+          <input id="blanco" class="input input--num voto__in" data-nav inputmode="numeric" pattern="[0-9]*" autocomplete="off"
+                 placeholder="0" [value]="mostrar(f().votosBlanco)" (input)="numero('votosBlanco', $event)" (focus)="$any($event.target).select()">
+        </li>
+        <li class="voto voto--esp">
+          <span class="voto__n" aria-hidden="true"></span>
+          <span class="voto__logo voto__logo--vacio" aria-hidden="true"></span>
+          <label class="voto__who" for="nulos"><strong>Votos nulos o viciados</strong></label>
+          <input id="nulos" class="input input--num voto__in" data-nav inputmode="numeric" pattern="[0-9]*" autocomplete="off"
+                 placeholder="0" [value]="mostrar(f().votosNulosViciados)" (input)="numero('votosNulosViciados', $event)" (focus)="$any($event.target).select()">
+        </li>
+      </ol>
+    </section>
+
+    <!-- Estado -->
+    <section class="panel">
+      <div class="panel__head"><h2>Estado</h2></div>
+      <div class="panel__body estado">
+        <div class="seg" role="radiogroup" aria-label="Estado del acta">
+          <button type="button" role="radio" class="seg__opt" [attr.aria-checked]="f().estado === 'CONTABILIZADA'"
+                  [disabled]="!puedeContabilizar()" (click)="campo('estado', 'CONTABILIZADA')">
+            <strong>Contabilizar</strong><small>Suma al tablero público</small>
+          </button>
+          <button type="button" role="radio" class="seg__opt" [attr.aria-checked]="f().estado === 'PENDIENTE'" (click)="campo('estado', 'PENDIENTE')">
+            <strong>Por verificar</strong><small>Se guarda sin sumar</small>
+          </button>
+          <button type="button" role="radio" class="seg__opt" [attr.aria-checked]="f().estado === 'OBSERVADA'" (click)="campo('estado', 'OBSERVADA')">
+            <strong>Observada</strong><small>Requiere revisión del supervisor</small>
+          </button>
+        </div>
+        @if (!puedeContabilizar()) {
+          <p class="field__hint">Esta acta está observada: solo un supervisor o administrador puede contabilizarla.</p>
+        }
+        @if (f().estado !== 'CONTABILIZADA' || cuadre().tipo === 'warn') {
+          <div class="field">
+            <label for="obs">Observación</label>
+            <textarea id="obs" class="textarea" [value]="f().observacion ?? ''" (input)="campo('observacion', $any($event.target).value)"
+                      placeholder="Ej. acta ilegible en la fila 3, falta firma del personero"></textarea>
+          </div>
+        }
+      </div>
+    </section>
+  </div>
+
+  <!-- Cuadre (panel fijo) -->
+  <aside class="cuadre" aria-label="Verificación del acta">
+    <div class="panel cuadre__card" [class]="'panel cuadre__card cuadre--' + cuadre().tipo">
+      <p class="cuadre__lbl">Suma del acta</p>
+      <p class="cuadre__big num">{{ suma() | number }}</p>
+      <dl class="cuadre__dl">
+        <div><dt>Total votantes</dt><dd class="num">{{ f().totalVotantes | number }}</dd></div>
+        <div><dt>Electores hábiles</dt><dd class="num">{{ f().totalElectoresHabiles | number }}</dd></div>
+      </dl>
+      <p class="cuadre__msg" aria-live="polite">{{ cuadre().texto }}</p>
+
+      @if (erroresServidor().length) {
+        <div class="alert alert--error errores" role="alert">
+          <strong>El servidor no aceptó el acta:</strong>
+          <ul>@for (e of erroresServidor(); track e) { <li>{{ e }}</li> }</ul>
+        </div>
+      }
+      @if (intentado() && v().errores.length) {
+        <div class="alert alert--error errores" role="alert">
+          <strong>Corrige antes de guardar:</strong>
+          <ul>@for (e of v().errores; track e) { <li>{{ e }}</li> }</ul>
+        </div>
+      }
+      @if (v().advertencias.length && (intentado() || cuadre().tipo === 'warn')) {
+        <div class="alert alert--warn">
+          <ul>@for (a of v().advertencias; track a) { <li>{{ a }}</li> }</ul>
+        </div>
+      }
+
+      <div class="cuadre__actions">
+        @if (!editando()) {
+          <button type="button" class="btn btn--primary btn--lg" [disabled]="guardando()" (click)="guardar(true)">
+            <app-icon name="check" /> {{ guardando() ? 'Guardando…' : 'Guardar y registrar otra' }}
+          </button>
+          <button type="button" class="btn" [disabled]="guardando()" (click)="guardar(false)">Guardar y volver al listado</button>
+        } @else {
+          <button type="button" class="btn btn--primary btn--lg" [disabled]="guardando()" (click)="guardar(false)">
+            <app-icon name="check" /> Guardar corrección
+          </button>
+          <a routerLink="/admin/actas" class="btn">Cancelar</a>
+        }
+      </div>
+    </div>
+  </aside>
+</div>

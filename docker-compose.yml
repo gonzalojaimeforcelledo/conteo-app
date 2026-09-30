@@ -1,0 +1,10 @@
+# Frontend independiente. El backend corre en su propio proyecto/servidor.
+#   API_URL=https://api.tudominio.pe docker compose up -d --build
+services:
+  frontend:
+    build: .
+    restart: unless-stopped
+    environment:
+      API_URL: ${API_URL:-http://localhost:8080}
+    ports:
+      - "8081:80"
