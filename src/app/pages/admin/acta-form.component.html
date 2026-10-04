@@ -66,6 +66,12 @@
             @if (estadoDe(el.id); as est) { · {{ est === 'CONTABILIZADA' ? 'contabilizada' : est === 'OBSERVADA' ? 'observada' : 'por verificar' }} }
           </span>
         </div>
+        @if (!data.candidatosDe(el.id).length) {
+          <div class="alert alert--error sin-cands" role="alert">
+            No llegaron los candidatos de esta elección. El servidor (backend) no tiene la versión nueva:
+            despliégala en Railway y recarga esta página.
+          </div>
+        }
         <ol class="votos">
           @for (c of data.candidatosDe(el.id); track c.id) {
             <li class="voto">
@@ -97,7 +103,7 @@
             <input [id]="'nulos-' + el.id" class="input input--num voto__in" data-nav inputmode="numeric" pattern="[0-9]*" autocomplete="off"
                    placeholder="0" [value]="mostrar(secs()[el.id].votosNulosViciados)" (input)="especial(el.id, 'votosNulosViciados', $event)" (focus)="$any($event.target).select()">
           </li>
-          <li class="voto voto--total">
+          <li class="voto voto--esp voto--total">
             <span class="voto__n" aria-hidden="true"></span>
             <span class="voto__logo voto__logo--vacio" aria-hidden="true"></span>
             <span class="voto__who"><strong>Suma {{ el.corto.toLowerCase() }}</strong><small>Válidos: {{ validos(el.id) | number }}</small></span>
