@@ -4,7 +4,7 @@ import { debounceTime, firstValueFrom } from 'rxjs';
 import { AuthService } from './auth.service';
 import { API } from './config';
 import { mensajes } from './errores';
-import { Acta, ActaBorrador, Candidato, ColegioLocal, Consolidado, EstadoActa } from './models';
+import { Acta, ActaBorrador, Candidato, ColegioLocal, Consolidado, Eleccion, EstadoActa } from './models';
 import { RealtimeService } from './realtime.service';
 import { num, sumaVotos } from './util';
 
@@ -13,11 +13,12 @@ export type { ActaBorrador } from './models';
 export interface Validacion { errores: string[]; advertencias: string[]; }
 export type Resultado<T> = { ok: true; valor: T } | { ok: false; errores: string[] };
 
-const CONSOLIDADO_VACIO: Consolidado = {
+const vacio = (eleccion: Eleccion): Consolidado => ({
+  eleccion,
   resultados: [], votosValidos: 0, votosBlanco: 0, votosNulos: 0, votosEmitidos: 0, electoresHabiles: 0,
   actasContabilizadas: 0, actasObservadas: 0, actasPendientes: 0, actasEsperadas: 0,
   porcentajeActas: 0, participacion: 0, ultimaActualizacion: null,
-};
+});
 
 /**
  * Acceso a la API REST. Mantiene en signals los datos que usan las pantallas
@@ -34,7 +35,22 @@ export class DataService {
   readonly actas = signal<Acta[]>([]);
   readonly cargando = signal(false);
 
-  readonly consolidado = computed<Consolidado>(() => this.rt.consolidado() ?? CONSOLIDADO_VACIO);
+  readonly consolidados: Record<Eleccion, () => Consolidado> = {
+    DISTRITAL: computed(() => this.rt.consolidados.DISTRITAL() ?? vacio('DISTRITAL')),
+    PROVINCIAL: computed(() => this.rt.consolidados.PROVINCIAL() ?? vacio('PROVINCIAL')),
+    REGIONAL: computed(() => this.rt.consolidados.REGIONAL() ?? vacio('REGIONAL')),
+  };
+  /** Distrital (Pueblo Nuevo): el que usa el panel por defecto. */
+  readonly consolidado = this.consolidados.DISTRITAL;
+  readonly candidatosPorEleccion = computed(() => ({
+    DISTRITAL: this.candidatos().filter((c) => (c.eleccion ?? 'DISTRITAL') === 'DISTRITAL'),
+    PROVINCIAL: this.candidatos().filter((c) => c.eleccion === 'PROVINCIAL'),
+    REGIONAL: this.candidatos().filter((c) => c.eleccion === 'REGIONAL'),
+  }));
+
+  candidatosDe(e: Eleccion): Candidato[] {
+    return this.candidatosPorEleccion()[e];
+  }
   readonly conectado = this.rt.conectado;
   readonly sinServidor = this.rt.error;
   readonly colegiosPorId = computed(() => new Map(this.colegios().map((c) => [c.id, c])));
@@ -81,18 +97,19 @@ export class DataService {
   validar(b: ActaBorrador, idExcluir?: number): Validacion {
     const errores: string[] = [];
     const advertencias: string[] = [];
-    const otras = this.actas().filter((a) => a.id !== idExcluir);
+    const otras = this.actas().filter((a) => a.id !== idExcluir && (a.eleccion ?? 'DISTRITAL') === b.eleccion);
+    const tipo = ` (${b.eleccion.toLowerCase()})`;
     const numero = b.numeroActa.trim();
     const mesa = b.mesa.trim();
     const colegio = b.colegioId != null ? this.colegiosPorId().get(b.colegioId) : undefined;
 
     if (!numero) errores.push('Ingresa el número de acta.');
     else if (otras.some((a) => a.numeroActa.trim().toLowerCase() === numero.toLowerCase()))
-      errores.push(`El acta N° ${numero} ya fue registrada.`);
+      errores.push(`El acta N° ${numero}${tipo} ya fue registrada.`);
     if (!colegio) errores.push('Selecciona el colegio o local de votación.');
     if (!mesa) errores.push('Ingresa el número de mesa.');
     else if (colegio && otras.some((a) => a.colegioId === colegio.id && a.mesa.trim() === mesa))
-      errores.push(`La mesa ${mesa} de ${colegio.nombre} ya tiene un acta registrada.`);
+      errores.push(`La mesa ${mesa} de ${colegio.nombre} ya tiene un acta${tipo} registrada.`);
     if (colegio && idExcluir == null && otras.filter((a) => a.colegioId === colegio.id).length >= colegio.totalMesas)
       errores.push(`${colegio.nombre} ya tiene sus ${colegio.totalMesas} mesas registradas. Revisa el catálogo de locales.`);
 
@@ -114,6 +131,12 @@ export class DataService {
 
   editarActa(id: number, b: ActaBorrador): Promise<Resultado<Acta>> {
     return this.ejecutar(this.http.put<Acta>(`${API}/actas/${id}`, this.limpiar(b)), () => this.cargarActas());
+  }
+
+  /** Acta física completa (varias elecciones de la misma mesa): se guarda todo o nada. */
+  guardarLote(items: { id?: number; datos: ActaBorrador }[]): Promise<Resultado<Acta[]>> {
+    const body = { actas: items.map((i) => ({ id: i.id ?? null, datos: this.limpiar(i.datos) })) };
+    return this.ejecutar(this.http.post<Acta[]>(`${API}/actas/lote`, body), () => this.recargarPanel());
   }
 
   cambiarEstado(id: number, estado: EstadoActa, motivo = ''): Promise<Resultado<Acta>> {
@@ -169,7 +192,7 @@ export class DataService {
 
   private limpiar(b: ActaBorrador): ActaBorrador {
     const votos: Record<number, number> = {};
-    for (const c of this.candidatos()) votos[c.id] = num(b.votos[c.id]);
+    for (const c of this.candidatosDe(b.eleccion)) votos[c.id] = num(b.votos[c.id]);
     return {
       ...b,
       numeroActa: b.numeroActa.trim(),

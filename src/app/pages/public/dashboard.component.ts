@@ -1,9 +1,10 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, input, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { DataService } from '../../core/data.service';
 import { AuthService } from '../../core/auth.service';
 import { fmtHora } from '../../core/util';
+import { ELECCIONES, Eleccion, eleccionDe } from '../../core/models';
 
 /**
  * RF-07 / RF-08 / RF-09 — Tablero público de solo lectura.
@@ -19,8 +20,8 @@ import { fmtHora } from '../../core/util';
         <div class="brand">
           <span class="brand__mark" aria-hidden="true"><i></i><i></i><i></i></span>
           <span>
-            <strong>Pueblo Nuevo 2026</strong>
-            <small>Elección de Alcalde distrital, 4 de octubre</small>
+            <strong>Elecciones Regionales y Municipales 2026</strong>
+            <small>Pueblo Nuevo, Chincha e Ica, 4 de octubre</small>
           </span>
         </div>
         <div class="top__right">
@@ -38,13 +39,21 @@ import { fmtHora } from '../../core/util';
 
     <section class="hero" aria-labelledby="t-avance">
       <div class="wrap hero__in">
+        <nav class="tabs" aria-label="Elección">
+          @for (e of elecciones; track e.id) {
+            <a class="tab" [class.tab--on]="e.id === sel()" [routerLink]="['/']" [queryParams]="{ eleccion: e.id }"
+               [attr.aria-current]="e.id === sel() ? 'page' : null">
+              <strong>{{ e.corto }}</strong><span class="tab__lugar">&nbsp;·&nbsp;{{ e.lugar }}</span>
+            </a>
+          }
+        </nav>
         <div class="hero__fig">
           <h1 id="t-avance" class="sr-only">Avance del conteo de actas</h1>
           <p class="hero__pct num"><span>{{ c().porcentajeActas | number: '1.1-1' }}</span><small>%</small></p>
           <p class="hero__lbl">
             de actas contabilizadas.
             <strong class="num">{{ c().actasContabilizadas }} de {{ c().actasEsperadas }}</strong>
-            mesas del distrito.
+            mesas de Pueblo Nuevo.
           </p>
         </div>
         <div class="hero__track" role="progressbar" aria-label="Actas contabilizadas"
@@ -61,7 +70,7 @@ import { fmtHora } from '../../core/util';
 
     <main class="wrap main">
       <div class="main__head">
-        <h2>Votos por candidato</h2>
+        <h2>Votos por candidato · {{ lugar() }}</h2>
         <p class="muted">Porcentaje sobre votos válidos. Solo suman las actas contabilizadas.</p>
       </div>
 
@@ -77,8 +86,14 @@ import { fmtHora } from '../../core/util';
               [class.row--flash]="flash().has(r.candidato.id)">
             <span class="row__rank num" aria-hidden="true">{{ r.posicion + 1 }}</span>
             <span class="row__pic">
-              <img class="row__foto" [src]="r.candidato.foto" [alt]="'Foto de ' + r.candidato.nombresCompletos" width="56" height="56" loading="lazy">
-              <img class="row__logo" [src]="r.candidato.logo" [alt]="'Logo de ' + r.candidato.partidoPolitico" width="26" height="26" loading="lazy">
+              @if (r.candidato.foto) {
+                <img class="row__foto" [src]="r.candidato.foto" [alt]="'Foto de ' + r.candidato.nombresCompletos" width="56" height="56" loading="lazy">
+              } @else {
+                <span class="row__foto row__ini" aria-hidden="true">{{ iniciales(r.candidato.nombresCompletos) }}</span>
+              }
+              @if (r.candidato.logo) {
+                <img class="row__logo" [src]="r.candidato.logo" [alt]="'Logo de ' + r.candidato.partidoPolitico" width="26" height="26" loading="lazy">
+              }
             </span>
             <span class="row__who">
               <strong>{{ r.candidato.nombresCompletos }}</strong>
@@ -118,7 +133,12 @@ export class DashboardComponent {
   data = inject(DataService);
   auth = inject(AuthService);
 
-  c = this.data.consolidado;
+  /** ?eleccion=PROVINCIAL en la URL (enlace compartible). */
+  eleccion = input<string>();
+  elecciones = ELECCIONES;
+  sel = computed<Eleccion>(() => eleccionDe(this.eleccion()));
+  lugar = computed(() => ELECCIONES.find((e) => e.id === this.sel())!.lugar);
+  c = computed(() => this.data.consolidados[this.sel()]());
   /** Orden estable del DOM (por lista) — la posición visual la da `--pos`, así el reordenamiento se anima. */
   porOrden = computed(() => [...this.c().resultados].sort((a, b) => a.candidato.ordenLista - b.candidato.ordenLista));
 
@@ -168,4 +188,9 @@ export class DashboardComponent {
   }
 
   hora = fmtHora;
+
+  iniciales(nombre: string): string {
+    const p = nombre.split(/\s+/).filter(Boolean);
+    return ((p[0]?.[0] ?? '') + (p[p.length > 3 ? 2 : p.length - 1]?.[0] ?? '')).toUpperCase();
+  }
 }

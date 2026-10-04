@@ -18,7 +18,7 @@ interface Item { ruta: string; texto: string; icono: string; roles?: Rol[]; }
       <aside class="nav" aria-label="Menú del panel">
         <a routerLink="/" class="nav__brand">
           <span class="mark" aria-hidden="true"><i></i><i></i><i></i></span>
-          <span><strong>Conteo de actas</strong><small>Pueblo Nuevo 2026</small></span>
+          <span><strong>Conteo de actas</strong><small>Municipales y regionales 2026</small></span>
         </a>
 
         <a routerLink="/admin/actas/nueva" class="btn btn--primary btn--lg nav__cta">

@@ -3,7 +3,7 @@ import { Injectable, NgZone, inject, signal } from '@angular/core';
 import { Client, IMessage } from '@stomp/stompjs';
 import { Subject, firstValueFrom } from 'rxjs';
 import { API, wsUrl } from './config';
-import { Consolidado } from './models';
+import { Consolidado, Eleccion, IDS_ELECCION } from './models';
 
 export interface AvisoCambio { entidad: 'ACTA' | 'COLEGIO'; tipo: string; id?: number | null; }
 
@@ -18,7 +18,11 @@ export class RealtimeService {
   private client?: Client;
   private polling?: ReturnType<typeof setInterval>;
 
-  readonly consolidado = signal<Consolidado | null>(null);
+  readonly consolidados: Record<Eleccion, ReturnType<typeof signal<Consolidado | null>>> = {
+    DISTRITAL: signal<Consolidado | null>(null),
+    PROVINCIAL: signal<Consolidado | null>(null),
+    REGIONAL: signal<Consolidado | null>(null),
+  };
   readonly conectado = signal(false);
   readonly error = signal(false);
   readonly cambios = new Subject<AvisoCambio>();
@@ -40,8 +44,10 @@ export class RealtimeService {
         this.conectado.set(true);
         this.detenerPolling();
       });
-      this.client!.subscribe('/topic/consolidado', (m: IMessage) =>
-        this.zone.run(() => this.consolidado.set(JSON.parse(m.body) as Consolidado)));
+      for (const e of IDS_ELECCION) {
+        this.client!.subscribe(`/topic/consolidado/${e}`, (m: IMessage) =>
+          this.zone.run(() => this.consolidados[e].set(JSON.parse(m.body) as Consolidado)));
+      }
       this.client!.subscribe('/topic/actas', (m: IMessage) =>
         this.zone.run(() => this.cambios.next(JSON.parse(m.body) as AvisoCambio)));
       void this.refrescar(); // por si hubo cambios mientras estaba desconectado
@@ -54,8 +60,9 @@ export class RealtimeService {
 
   async refrescar(): Promise<void> {
     try {
-      const c = await firstValueFrom(this.http.get<Consolidado>(`${API}/public/consolidado`));
-      this.consolidado.set(c);
+      const todos = await Promise.all(IDS_ELECCION.map((e) =>
+        firstValueFrom(this.http.get<Consolidado>(`${API}/public/consolidado`, { params: { eleccion: e } }))));
+      IDS_ELECCION.forEach((e, i) => this.consolidados[e].set(todos[i]));
       this.error.set(false);
     } catch {
       this.error.set(true);

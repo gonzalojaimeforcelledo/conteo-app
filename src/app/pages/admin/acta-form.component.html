@@ -32,7 +32,7 @@
             }
           </select>
           @if (colegio(); as c) {
-            <span class="field__hint">{{ mesasUsadas() }} de {{ c.totalMesas }} mesas ya registradas en este local.</span>
+            <span class="field__hint">{{ mesasUsadas() }} de {{ c.totalMesas }} mesas de este local ya tienen acta.</span>
           }
         </div>
         <div class="field">
@@ -51,46 +51,61 @@
           <label for="votantes">Total de votantes</label>
           <input id="votantes" class="input input--num" data-nav inputmode="numeric" pattern="[0-9]*" autocomplete="off"
                  [value]="mostrar(f().totalVotantes)" (input)="numero('totalVotantes', $event)">
-          <span class="field__hint">Electores que votaron, según el acta.</span>
+          <span class="field__hint">Electores que votaron, según el acta (vale para las tres elecciones).</span>
         </div>
       </div>
     </section>
 
-    <!-- Votos -->
-    <section class="panel">
-      <div class="panel__head">
-        <h2>Votos</h2>
-        <span class="muted num">Válidos: {{ validos() | number }}</span>
-      </div>
-      <ol class="votos">
-        @for (c of data.candidatos(); track c.id) {
-          <li class="voto">
-            <span class="voto__n num" aria-hidden="true">{{ c.ordenLista }}</span>
-            <img class="voto__logo" [src]="c.logo" alt="" width="44" height="44">
-            <label class="voto__who" [for]="'c' + c.id">
-              <strong>{{ c.partidoPolitico }}</strong>
-              <small><img class="voto__foto" [src]="c.foto" alt="" width="20" height="20">{{ c.nombresCompletos }}</small>
-            </label>
-            <input [id]="'c' + c.id" class="input input--num voto__in" data-nav inputmode="numeric" pattern="[0-9]*" autocomplete="off"
-                   placeholder="0" [value]="mostrar(f().votos[c.id])" (input)="voto(c.id, $event)" (focus)="$any($event.target).select()">
+    <!-- Votos: una sección por elección (la misma acta física trae las tres) -->
+    @for (el of elecciones; track el.id) {
+      <section class="panel elec" [class.elec--vacia]="cuadres()[el.id].tipo === 'vacia'">
+        <div class="panel__head">
+          <h2>{{ el.titulo }}</h2>
+          <span class="elec__estado" [class]="'elec__estado elec__estado--' + cuadres()[el.id].tipo">
+            {{ cuadres()[el.id].texto }}
+            @if (estadoDe(el.id); as est) { · {{ est === 'CONTABILIZADA' ? 'contabilizada' : est === 'OBSERVADA' ? 'observada' : 'por verificar' }} }
+          </span>
+        </div>
+        <ol class="votos">
+          @for (c of data.candidatosDe(el.id); track c.id) {
+            <li class="voto">
+              <span class="voto__n num" aria-hidden="true">{{ c.ordenLista }}</span>
+              @if (c.logo) {
+                <img class="voto__logo" [src]="c.logo" alt="" width="44" height="44">
+              } @else {
+                <span class="voto__logo voto__sinlogo" aria-hidden="true">{{ c.partidoPolitico.charAt(0) }}</span>
+              }
+              <label class="voto__who" [for]="'c' + c.id">
+                <strong>{{ c.partidoPolitico }}</strong>
+                <small>@if (c.foto) {<img class="voto__foto" [src]="c.foto" alt="" width="20" height="20">}{{ c.nombresCompletos }}</small>
+              </label>
+              <input [id]="'c' + c.id" class="input input--num voto__in" data-nav inputmode="numeric" pattern="[0-9]*" autocomplete="off"
+                     placeholder="0" [value]="mostrar(secs()[el.id].votos[c.id])" (input)="voto(el.id, c.id, $event)" (focus)="$any($event.target).select()">
+            </li>
+          }
+          <li class="voto voto--esp">
+            <span class="voto__n" aria-hidden="true"></span>
+            <span class="voto__logo voto__logo--vacio" aria-hidden="true"></span>
+            <label class="voto__who" [for]="'blanco-' + el.id"><strong>Votos en blanco</strong></label>
+            <input [id]="'blanco-' + el.id" class="input input--num voto__in" data-nav inputmode="numeric" pattern="[0-9]*" autocomplete="off"
+                   placeholder="0" [value]="mostrar(secs()[el.id].votosBlanco)" (input)="especial(el.id, 'votosBlanco', $event)" (focus)="$any($event.target).select()">
           </li>
-        }
-        <li class="voto voto--esp">
-          <span class="voto__n" aria-hidden="true"></span>
-          <span class="voto__logo voto__logo--vacio" aria-hidden="true"></span>
-          <label class="voto__who" for="blanco"><strong>Votos en blanco</strong></label>
-          <input id="blanco" class="input input--num voto__in" data-nav inputmode="numeric" pattern="[0-9]*" autocomplete="off"
-                 placeholder="0" [value]="mostrar(f().votosBlanco)" (input)="numero('votosBlanco', $event)" (focus)="$any($event.target).select()">
-        </li>
-        <li class="voto voto--esp">
-          <span class="voto__n" aria-hidden="true"></span>
-          <span class="voto__logo voto__logo--vacio" aria-hidden="true"></span>
-          <label class="voto__who" for="nulos"><strong>Votos nulos o viciados</strong></label>
-          <input id="nulos" class="input input--num voto__in" data-nav inputmode="numeric" pattern="[0-9]*" autocomplete="off"
-                 placeholder="0" [value]="mostrar(f().votosNulosViciados)" (input)="numero('votosNulosViciados', $event)" (focus)="$any($event.target).select()">
-        </li>
-      </ol>
-    </section>
+          <li class="voto voto--esp">
+            <span class="voto__n" aria-hidden="true"></span>
+            <span class="voto__logo voto__logo--vacio" aria-hidden="true"></span>
+            <label class="voto__who" [for]="'nulos-' + el.id"><strong>Votos nulos o viciados</strong></label>
+            <input [id]="'nulos-' + el.id" class="input input--num voto__in" data-nav inputmode="numeric" pattern="[0-9]*" autocomplete="off"
+                   placeholder="0" [value]="mostrar(secs()[el.id].votosNulosViciados)" (input)="especial(el.id, 'votosNulosViciados', $event)" (focus)="$any($event.target).select()">
+          </li>
+          <li class="voto voto--total">
+            <span class="voto__n" aria-hidden="true"></span>
+            <span class="voto__logo voto__logo--vacio" aria-hidden="true"></span>
+            <span class="voto__who"><strong>Suma {{ el.corto.toLowerCase() }}</strong><small>Válidos: {{ validos(el.id) | number }}</small></span>
+            <strong class="voto__suma num">{{ suma(el.id) | number }}</strong>
+          </li>
+        </ol>
+      </section>
+    }
 
     <!-- Estado -->
     <section class="panel">
@@ -109,12 +124,12 @@
           </button>
         </div>
         @if (!puedeContabilizar()) {
-          <p class="field__hint">Esta acta está observada: solo un supervisor o administrador puede contabilizarla.</p>
+          <p class="field__hint">Esta acta tiene una elección observada: solo un supervisor o administrador puede contabilizarla.</p>
         }
-        @if (f().estado !== 'CONTABILIZADA' || cuadre().tipo === 'warn') {
+        @if (f().estado !== 'CONTABILIZADA' || resumen().tipo === 'warn') {
           <div class="field">
             <label for="obs">Observación</label>
-            <textarea id="obs" class="textarea" [value]="f().observacion ?? ''" (input)="campo('observacion', $any($event.target).value)"
+            <textarea id="obs" class="textarea" [value]="f().observacion" (input)="campo('observacion', $any($event.target).value)"
                       placeholder="Ej. acta ilegible en la fila 3, falta firma del personero"></textarea>
           </div>
         }
@@ -124,14 +139,23 @@
 
   <!-- Cuadre (panel fijo) -->
   <aside class="cuadre" aria-label="Verificación del acta">
-    <div class="panel cuadre__card" [class]="'panel cuadre__card cuadre--' + cuadre().tipo">
-      <p class="cuadre__lbl">Suma del acta</p>
-      <p class="cuadre__big num">{{ suma() | number }}</p>
+    <div [class]="'panel cuadre__card cuadre--' + resumen().tipo">
+      <p class="cuadre__lbl">Cuadre del acta</p>
       <dl class="cuadre__dl">
         <div><dt>Total votantes</dt><dd class="num">{{ f().totalVotantes | number }}</dd></div>
         <div><dt>Electores hábiles</dt><dd class="num">{{ f().totalElectoresHabiles | number }}</dd></div>
       </dl>
-      <p class="cuadre__msg" aria-live="polite">{{ cuadre().texto }}</p>
+      <ul class="cuadre__elec">
+        @for (el of elecciones; track el.id) {
+          <li [class]="'cq cq--' + cuadres()[el.id].tipo">
+            <span class="cq__dot" aria-hidden="true"></span>
+            <span class="cq__n">{{ el.corto }}</span>
+            <strong class="num">{{ suma(el.id) | number }}</strong>
+            <small>{{ cuadres()[el.id].texto }}</small>
+          </li>
+        }
+      </ul>
+      <p class="cuadre__msg" aria-live="polite">{{ resumen().texto }}</p>
 
       @if (erroresServidor().length) {
         <div class="alert alert--error errores" role="alert">
@@ -145,7 +169,7 @@
           <ul>@for (e of v().errores; track e) { <li>{{ e }}</li> }</ul>
         </div>
       }
-      @if (v().advertencias.length && (intentado() || cuadre().tipo === 'warn')) {
+      @if (v().advertencias.length && (intentado() || resumen().tipo === 'warn')) {
         <div class="alert alert--warn">
           <ul>@for (a of v().advertencias; track a) { <li>{{ a }}</li> }</ul>
         </div>

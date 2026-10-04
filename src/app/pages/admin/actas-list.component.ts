@@ -3,7 +3,7 @@ import { DecimalPipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { DataService } from '../../core/data.service';
 import { AuthService } from '../../core/auth.service';
-import { Acta, EstadoActa } from '../../core/models';
+import { Acta, EstadoActa, cortoEleccion } from '../../core/models';
 import { fmtFecha, sumaVotos } from '../../core/util';
 import { ToastService } from '../../shared/toast.service';
 import { IconComponent } from '../../shared/icon.component';
@@ -19,7 +19,11 @@ type Filtro = EstadoActa | 'TODAS';
     <div class="page-head">
       <div>
         <h1>Actas</h1>
-        <p class="num">{{ c().actasContabilizadas }} contabilizadas de {{ c().actasEsperadas }} esperadas ({{ c().porcentajeActas | number: '1.1-1' }}%).</p>
+        <p class="num">
+          Distrital: {{ c().actasContabilizadas }} de {{ c().actasEsperadas }} ({{ c().porcentajeActas | number: '1.1-1' }}%)
+          · Provincial: {{ cp().actasContabilizadas }} de {{ cp().actasEsperadas }} ({{ cp().porcentajeActas | number: '1.1-1' }}%)
+          · Regional: {{ cr().actasContabilizadas }} de {{ cr().actasEsperadas }} ({{ cr().porcentajeActas | number: '1.1-1' }}%)
+        </p>
       </div>
       <div class="page-head__actions">
         <a routerLink="/admin/actas/nueva" class="btn btn--primary"><app-icon name="plus" /> Registrar acta</a>
@@ -32,6 +36,12 @@ type Filtro = EstadoActa | 'TODAS';
         <input class="input" type="search" placeholder="Buscar por N° de acta o mesa" aria-label="Buscar por número de acta o mesa"
                [value]="q()" (input)="q.set($any($event.target).value)">
       </div>
+      <select class="select" aria-label="Filtrar por elección" [value]="eleccion()" (change)="eleccion.set($any($event.target).value)">
+        <option value="">Todas las elecciones</option>
+        <option value="DISTRITAL">Distrital (Pueblo Nuevo)</option>
+        <option value="PROVINCIAL">Provincial (Chincha)</option>
+        <option value="REGIONAL">Regional (Ica)</option>
+      </select>
       <select class="select" aria-label="Filtrar por local" [value]="colegio()" (change)="colegio.set($any($event.target).value)">
         <option value="">Todos los locales</option>
         @for (col of data.colegios(); track col.id) { <option [value]="col.id">{{ col.nombre }}</option> }
@@ -66,7 +76,7 @@ type Filtro = EstadoActa | 'TODAS';
           <tbody>
             @for (a of lista(); track a.id) {
               <tr>
-                <td><strong class="num">{{ a.numeroActa }}</strong></td>
+                <td><strong class="num">{{ a.numeroActa }}</strong> <span class="el" [class.el--p]="a.eleccion === 'PROVINCIAL'" [class.el--r]="a.eleccion === 'REGIONAL'">{{ cortoEl(a.eleccion).slice(0, 4) }}.</span></td>
                 <td>{{ a.colegioNombre ?? data.nombreColegio(a.colegioId) }}</td>
                 <td class="num">{{ a.mesa }}</td>
                 <td class="r num" [class.descuadre]="suma(a) !== a.totalVotantes">{{ suma(a) | number }} / {{ a.totalVotantes | number }}</td>
@@ -97,7 +107,7 @@ type Filtro = EstadoActa | 'TODAS';
         @for (a of lista(); track a.id) {
           <li class="panel card">
             <div class="card__top">
-              <strong class="num">Acta {{ a.numeroActa }}</strong>
+              <strong class="num">Acta {{ a.numeroActa }} <span class="el" [class.el--p]="a.eleccion === 'PROVINCIAL'" [class.el--r]="a.eleccion === 'REGIONAL'">{{ cortoEl(a.eleccion) }}</span></strong>
               <span class="badge" [class]="'badge badge--' + a.estado">{{ texto[a.estado] }}</span>
             </div>
             <p class="muted">{{ a.colegioNombre }}, mesa {{ a.mesa }}</p>
@@ -145,6 +155,9 @@ type Filtro = EstadoActa | 'TODAS';
     </dialog>
   `,
   styles: `
+    .el { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 6px; background: var(--gray-100, #f1f1f3); color: var(--gray-700, #3f3f46); vertical-align: 1px; }
+    .el--p { background: var(--red-50); color: var(--red-700); }
+    .el--r { background: #EEF2FF; color: #3730A3; }
     .filtros { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 12px; margin-bottom: 16px; }
     .buscar { position: relative; }
     .buscar app-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--color-text-muted); }
@@ -180,7 +193,11 @@ export class ActasListComponent {
   private toast = inject(ToastService);
   dlg = viewChild.required<ElementRef<HTMLDialogElement>>('dlg');
 
-  c = this.data.consolidado;
+  c = this.data.consolidados.DISTRITAL;
+  cp = this.data.consolidados.PROVINCIAL;
+  cr = this.data.consolidados.REGIONAL;
+  cortoEl = cortoEleccion;
+  eleccion = signal('');
   q = signal('');
   colegio = signal('');
   private colegioNum = computed(() => (this.colegio() ? Number(this.colegio()) : null));
@@ -199,8 +216,9 @@ export class ActasListComponent {
   private base = computed(() => {
     const q = this.q().trim().toLowerCase();
     const col = this.colegioNum();
+    const el = this.eleccion();
     return this.data.actas().filter((a) =>
-      (!col || a.colegioId === col) && (!q || a.numeroActa.toLowerCase().includes(q) || a.mesa.toLowerCase().includes(q)));
+      (!el || a.eleccion === el) && (!col || a.colegioId === col) && (!q || a.numeroActa.toLowerCase().includes(q) || a.mesa.toLowerCase().includes(q)));
   });
 
   conteo = computed(() => {

@@ -4,6 +4,22 @@
 
 export type Rol = 'ADMIN' | 'SUPERVISOR' | 'DIGITADOR';
 
+/** DISTRITAL = Alcalde de Pueblo Nuevo · PROVINCIAL = Alcalde de Chincha · REGIONAL = Gobernador de Ica */
+export type Eleccion = 'DISTRITAL' | 'PROVINCIAL' | 'REGIONAL';
+
+export const ELECCIONES: { id: Eleccion; titulo: string; corto: string; lugar: string }[] = [
+  { id: 'DISTRITAL', titulo: 'Alcalde distrital de Pueblo Nuevo', corto: 'Distrital', lugar: 'Pueblo Nuevo' },
+  { id: 'PROVINCIAL', titulo: 'Alcalde provincial de Chincha', corto: 'Provincial', lugar: 'Chincha' },
+  { id: 'REGIONAL', titulo: 'Gobernador regional de Ica', corto: 'Regional', lugar: 'Ica' },
+];
+
+export const IDS_ELECCION: Eleccion[] = ['DISTRITAL', 'PROVINCIAL', 'REGIONAL'];
+export const eleccionDe = (v: string | null | undefined): Eleccion =>
+  IDS_ELECCION.includes((v ?? '').toUpperCase() as Eleccion) ? ((v ?? '').toUpperCase() as Eleccion) : 'DISTRITAL';
+export const cortoEleccion = (e: Eleccion | undefined) => ELECCIONES.find((x) => x.id === (e ?? 'DISTRITAL'))!.corto;
+
+export const tituloEleccion = (e: Eleccion) => ELECCIONES.find((x) => x.id === e)!.titulo;
+
 export interface Usuario {
   id: number;
   usuario: string;
@@ -15,11 +31,12 @@ export interface Usuario {
 
 export interface Candidato {
   id: number;
+  eleccion: Eleccion;
   nombresCompletos: string;
   partidoPolitico: string;
   ordenLista: number;
-  logo: string;
-  foto: string;
+  logo: string | null;
+  foto: string | null;
 }
 
 export interface ColegioLocal {
@@ -35,6 +52,7 @@ export type EstadoActa = 'PENDIENTE' | 'CONTABILIZADA' | 'OBSERVADA';
 
 export interface Acta {
   id: number;
+  eleccion: Eleccion;
   numeroActa: string;
   colegioId: number;
   colegioNombre?: string;
@@ -55,6 +73,7 @@ export interface Acta {
 
 /** Cuerpo de POST/PUT /api/actas */
 export interface ActaBorrador {
+  eleccion: Eleccion;
   numeroActa: string;
   colegioId: number | null;
   mesa: string;
@@ -93,6 +112,7 @@ export interface ResultadoCandidato {
 }
 
 export interface Consolidado {
+  eleccion: Eleccion;
   resultados: ResultadoCandidato[];
   votosValidos: number;
   votosBlanco: number;
