@@ -13,6 +13,10 @@ export type { ActaBorrador } from './models';
 export interface Validacion { errores: string[]; advertencias: string[]; }
 export type Resultado<T> = { ok: true; valor: T } | { ok: false; errores: string[] };
 
+/** Fotos incluidas en el frontend para candidatos que no la traen desde la base (Chincha: 101–113). */
+const conFoto = (c: Candidato): Candidato =>
+  c.foto || c.id < 101 || c.id > 113 ? c : { ...c, foto: `candidatos/chincha-${c.id}.jpg` };
+
 const vacio = (eleccion: Eleccion): Consolidado => ({
   eleccion,
   resultados: [], votosValidos: 0, votosBlanco: 0, votosNulos: 0, votosEmitidos: 0, electoresHabiles: 0,
@@ -63,8 +67,10 @@ export class DataService {
    */
   private soloDe(e: Eleccion, c: Consolidado | null): Consolidado {
     if (!c) return vacio(e);
-    const propios = c.resultados.filter((r) => this.eleccionDe(r.candidato) === e);
-    if (propios.length === c.resultados.length) return { ...c, eleccion: e };
+    const propios = c.resultados
+      .filter((r) => this.eleccionDe(r.candidato) === e)
+      .map((r) => ({ ...r, candidato: conFoto(r.candidato) }));
+    if (propios.length === c.resultados.length) return { ...c, eleccion: e, resultados: propios };
     const validos = propios.reduce((s, r) => s + r.votos, 0);
     const resultados = [...propios]
       .sort((a, b) => b.votos - a.votos || a.candidato.ordenLista - b.candidato.ordenLista)
@@ -93,7 +99,8 @@ export class DataService {
   async inicializar(): Promise<void> {
     this.rt.iniciar();
     try {
-      this.candidatos.set(await firstValueFrom(this.http.get<Candidato[]>(`${API}/public/candidatos`)));
+      const lista = await firstValueFrom(this.http.get<Candidato[]>(`${API}/public/candidatos`));
+      this.candidatos.set(lista.map(conFoto));
     } catch { /* el tablero lo reintentará con el consolidado */ }
   }
 
