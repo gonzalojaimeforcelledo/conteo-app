@@ -42,11 +42,22 @@ export class DataService {
   };
   /** Distrital (Pueblo Nuevo): el que usa el panel por defecto. */
   readonly consolidado = this.consolidados.DISTRITAL;
-  readonly candidatosPorEleccion = computed(() => ({
-    DISTRITAL: this.candidatos().filter((c) => (c.eleccion ?? 'DISTRITAL') === 'DISTRITAL'),
-    PROVINCIAL: this.candidatos().filter((c) => c.eleccion === 'PROVINCIAL'),
-    REGIONAL: this.candidatos().filter((c) => c.eleccion === 'REGIONAL'),
-  }));
+  /**
+   * Elección de cada candidato. Si el servidor no envía el campo (backend anterior),
+   * se deduce por el id: 1–99 distrital, 101–199 provincial, 201+ regional.
+   */
+  private eleccionDe(c: Candidato): Eleccion {
+    if (c.eleccion) return c.eleccion;
+    return c.id >= 201 ? 'REGIONAL' : c.id >= 101 ? 'PROVINCIAL' : 'DISTRITAL';
+  }
+  readonly candidatosPorEleccion = computed(() => {
+    const de = (e: Eleccion) => this.candidatos()
+      .filter((c) => this.eleccionDe(c) === e)
+      .sort((a, b) => a.ordenLista - b.ordenLista);
+    return { DISTRITAL: de('DISTRITAL'), PROVINCIAL: de('PROVINCIAL'), REGIONAL: de('REGIONAL') };
+  });
+  /** false mientras el backend desplegado sea la versión anterior (sin el campo "eleccion"). */
+  readonly backendActualizado = computed(() => this.candidatos().length === 0 || this.candidatos().some((c) => !!c.eleccion));
 
   candidatosDe(e: Eleccion): Candidato[] {
     return this.candidatosPorEleccion()[e];
@@ -136,7 +147,10 @@ export class DataService {
   /** Acta física completa (varias elecciones de la misma mesa): se guarda todo o nada. */
   guardarLote(items: { id?: number; datos: ActaBorrador }[]): Promise<Resultado<Acta[]>> {
     const body = { actas: items.map((i) => ({ id: i.id ?? null, datos: this.limpiar(i.datos) })) };
-    return this.ejecutar(this.http.post<Acta[]>(`${API}/actas/lote`, body), () => this.recargarPanel());
+    return this.ejecutar(this.http.post<Acta[]>(`${API}/actas/lote`, body), () => this.recargarPanel())
+      .then((r) => (!r.ok && !this.backendActualizado()
+        ? { ok: false as const, errores: ['El backend en Railway todavía es la versión anterior: no puede guardar el acta con las tres elecciones. Despliega el backend nuevo y vuelve a intentarlo.'] }
+        : r));
   }
 
   cambiarEstado(id: number, estado: EstadoActa, motivo = ''): Promise<Resultado<Acta>> {

@@ -10,6 +10,12 @@
   </div>
 </div>
 
+@if (!data.backendActualizado()) {
+  <div class="alert alert--error aviso-backend" role="alert">
+    <strong>El backend en Railway es la versión anterior.</strong>
+    Los candidatos se muestran en su elección, pero el acta no se podrá guardar hasta que despliegues el backend nuevo.
+  </div>
+}
 <div class="grid" (keydown)="siguiente($event)">
   <div class="col">
     <!-- Identificación -->
@@ -68,8 +74,8 @@
         </div>
         @if (!data.candidatosDe(el.id).length) {
           <div class="alert alert--error sin-cands" role="alert">
-            No llegaron los candidatos de esta elección. El servidor (backend) no tiene la versión nueva:
-            despliégala en Railway y recarga esta página.
+            No llegaron los candidatos de esta elección. Revisa que estén cargados en la base de datos
+            y que el backend nuevo esté desplegado en Railway; luego recarga esta página.
           </div>
         }
         <ol class="votos">
