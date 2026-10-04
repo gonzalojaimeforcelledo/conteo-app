@@ -36,9 +36,9 @@ export class DataService {
   readonly cargando = signal(false);
 
   readonly consolidados: Record<Eleccion, () => Consolidado> = {
-    DISTRITAL: computed(() => this.rt.consolidados.DISTRITAL() ?? vacio('DISTRITAL')),
-    PROVINCIAL: computed(() => this.rt.consolidados.PROVINCIAL() ?? vacio('PROVINCIAL')),
-    REGIONAL: computed(() => this.rt.consolidados.REGIONAL() ?? vacio('REGIONAL')),
+    DISTRITAL: computed(() => this.soloDe('DISTRITAL', this.rt.consolidados.DISTRITAL())),
+    PROVINCIAL: computed(() => this.soloDe('PROVINCIAL', this.rt.consolidados.PROVINCIAL())),
+    REGIONAL: computed(() => this.soloDe('REGIONAL', this.rt.consolidados.REGIONAL())),
   };
   /** Distrital (Pueblo Nuevo): el que usa el panel por defecto. */
   readonly consolidado = this.consolidados.DISTRITAL;
@@ -56,6 +56,22 @@ export class DataService {
       .sort((a, b) => a.ordenLista - b.ordenLista);
     return { DISTRITAL: de('DISTRITAL'), PROVINCIAL: de('PROVINCIAL'), REGIONAL: de('REGIONAL') };
   });
+  /**
+   * Deja en el consolidado solo los candidatos de la elección pedida y recalcula
+   * porcentajes y puestos. Con el backend nuevo no cambia nada (ya viene filtrado);
+   * con el anterior evita que los 31 candidatos aparezcan juntos.
+   */
+  private soloDe(e: Eleccion, c: Consolidado | null): Consolidado {
+    if (!c) return vacio(e);
+    const propios = c.resultados.filter((r) => this.eleccionDe(r.candidato) === e);
+    if (propios.length === c.resultados.length) return { ...c, eleccion: e };
+    const validos = propios.reduce((s, r) => s + r.votos, 0);
+    const resultados = [...propios]
+      .sort((a, b) => b.votos - a.votos || a.candidato.ordenLista - b.candidato.ordenLista)
+      .map((r, i) => ({ ...r, posicion: i, porcentaje: validos ? Math.round((r.votos * 10000) / validos) / 100 : 0 }));
+    return { ...c, eleccion: e, resultados, votosValidos: validos, votosEmitidos: validos + c.votosBlanco + c.votosNulos };
+  }
+
   /** false mientras el backend desplegado sea la versión anterior (sin el campo "eleccion"). */
   readonly backendActualizado = computed(() => this.candidatos().length === 0 || this.candidatos().some((c) => !!c.eleccion));
 
