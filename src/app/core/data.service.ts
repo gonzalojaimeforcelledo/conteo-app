@@ -13,7 +13,7 @@ export type { ActaBorrador } from './models';
 export interface Validacion { errores: string[]; advertencias: string[]; }
 export type Resultado<T> = { ok: true; valor: T } | { ok: false; errores: string[] };
 
-/** Fotos incluidas en el frontend para candidatos que no la traen desde la base (Chincha: 101–113). */
+/** Fotos y logos incluidos en el frontend para candidatos que no los traen desde la base (Chincha 101–113, regional 201–210). */
 const LOGOS_NUEVOS: Record<string, string> = {
   'Libertad Popular': 'logos/libertad-popular.png',
   'Partido del Buen Gobierno': 'logos/buen-gobierno.png',
@@ -23,7 +23,9 @@ const LOGOS_NUEVOS: Record<string, string> = {
 };
 const conFoto = (c: Candidato): Candidato => ({
   ...c,
-  foto: c.foto ?? (c.id >= 101 && c.id <= 113 ? `candidatos/chincha-${c.id}.jpg` : null),
+  foto: c.foto
+    ?? (c.id >= 101 && c.id <= 113 ? `candidatos/chincha-${c.id}.jpg`
+      : c.id >= 201 && c.id <= 210 ? `candidatos/regional-${c.id}.jpg` : null),
   logo: c.logo ?? LOGOS_NUEVOS[c.partidoPolitico] ?? null,
 });
 
