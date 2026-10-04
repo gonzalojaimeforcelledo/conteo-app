@@ -20,6 +20,8 @@ const LOGOS_NUEVOS: Record<string, string> = {
   'Fuerza Popular': 'logos/fuerza-popular.png',
   'Partido Democrata Unido Perú': 'logos/unido-peru.png',
   'Fuerza Ciudadana': 'logos/fuerza-ciudadana.png',
+  'Alianza Electoral Venceremos': 'logos/venceremos.png',
+  'Frente Popular Agrícola Fia del Perú': 'logos/frepap.png',
 };
 const conFoto = (c: Candidato): Candidato => ({
   ...c,
