@@ -14,8 +14,18 @@ export interface Validacion { errores: string[]; advertencias: string[]; }
 export type Resultado<T> = { ok: true; valor: T } | { ok: false; errores: string[] };
 
 /** Fotos incluidas en el frontend para candidatos que no la traen desde la base (Chincha: 101–113). */
-const conFoto = (c: Candidato): Candidato =>
-  c.foto || c.id < 101 || c.id > 113 ? c : { ...c, foto: `candidatos/chincha-${c.id}.jpg` };
+const LOGOS_NUEVOS: Record<string, string> = {
+  'Libertad Popular': 'logos/libertad-popular.png',
+  'Partido del Buen Gobierno': 'logos/buen-gobierno.png',
+  'Fuerza Popular': 'logos/fuerza-popular.png',
+  'Partido Democrata Unido Perú': 'logos/unido-peru.png',
+  'Fuerza Ciudadana': 'logos/fuerza-ciudadana.png',
+};
+const conFoto = (c: Candidato): Candidato => ({
+  ...c,
+  foto: c.foto ?? (c.id >= 101 && c.id <= 113 ? `candidatos/chincha-${c.id}.jpg` : null),
+  logo: c.logo ?? LOGOS_NUEVOS[c.partidoPolitico] ?? null,
+});
 
 const vacio = (eleccion: Eleccion): Consolidado => ({
   eleccion,
