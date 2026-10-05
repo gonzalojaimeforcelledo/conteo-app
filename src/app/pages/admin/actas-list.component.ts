@@ -11,6 +11,9 @@ import { IconComponent } from '../../shared/icon.component';
 type Filtro = EstadoActa | 'TODAS';
 
 /** RF-05 — listado, filtros y flujo de aprobación de observadas. */
+/** minúsculas y sin tildes */
+const normalizar = (v: string) => v.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+
 @Component({
   selector: 'app-actas-list',
   imports: [RouterLink, DecimalPipe, IconComponent],
@@ -33,7 +36,7 @@ type Filtro = EstadoActa | 'TODAS';
     <div class="filtros">
       <div class="buscar">
         <app-icon name="search" />
-        <input class="input" type="search" placeholder="Buscar por N° de acta o mesa" aria-label="Buscar por número de acta o mesa"
+        <input class="input" type="search" placeholder="Buscar por N° de acta, mesa, local o digitador" aria-label="Buscar actas"
                [value]="q()" (input)="q.set($any($event.target).value)">
       </div>
       <select class="select" aria-label="Filtrar por elección" [value]="eleccion()" (change)="eleccion.set($any($event.target).value)">
@@ -62,7 +65,8 @@ type Filtro = EstadoActa | 'TODAS';
           <p>Registra la primera acta en cuanto llegue del local de votación.</p>
         } @else {
           <strong>Sin resultados</strong>
-          <p>Ninguna acta coincide con los filtros elegidos.</p>
+          <p>Ninguna acta coincide{{ q().trim() ? ' con «' + q().trim() + '»' : '' }} con los filtros elegidos.</p>
+          @if (q().trim()) { <button type="button" class="btn" (click)="limpiarBusqueda()">Limpiar búsqueda</button> }
         }
       </div>
     } @else {
@@ -214,11 +218,11 @@ export class ActasListComponent {
   ];
 
   private base = computed(() => {
-    const q = this.q().trim().toLowerCase();
+    const terminos = normalizar(this.q()).split(/\s+/).filter(Boolean);
     const col = this.colegioNum();
     const el = this.eleccion();
     return this.data.actas().filter((a) =>
-      (!el || a.eleccion === el) && (!col || a.colegioId === col) && (!q || a.numeroActa.toLowerCase().includes(q) || a.mesa.toLowerCase().includes(q)));
+      (!el || a.eleccion === el) && (!col || a.colegioId === col) && terminos.every((t) => this.coincide(a, t)));
   });
 
   conteo = computed(() => {
@@ -233,6 +237,31 @@ export class ActasListComponent {
       .filter((a) => e === 'TODAS' || a.estado === e)
       .sort((a, b) => (b.fechaActualizacion ?? b.fechaRegistro).localeCompare(a.fechaActualizacion ?? a.fechaRegistro));
   });
+
+  /**
+   * Busca en N° de acta, mesa, local, digitador, elección y estado. Ignora tildes y mayúsculas.
+   * En números compara también sin ceros a la izquierda: "123" encuentra el acta "000123"
+   * y "5" encuentra la mesa "005" (pero no la 015).
+   */
+  private coincide(a: Acta, t: string): boolean {
+    const sinCeros = (v: string) => v.replace(/^0+(?=\d)/, '');
+    const numero = normalizar(a.numeroActa ?? '');
+    const mesa = normalizar(a.mesa ?? '');
+    if (/^\d+$/.test(t)) {
+      const tc = sinCeros(t);
+      return numero.includes(t) || sinCeros(numero).includes(tc) || mesa === t || sinCeros(mesa) === tc;
+    }
+    const col = this.data.colegiosPorId().get(a.colegioId);
+    const texto = normalizar([
+      a.numeroActa, a.mesa, a.colegioNombre ?? col?.nombre, col?.codigo, a.registradoPor, a.actualizadoPor,
+      a.eleccion, a.eleccion ? cortoEleccion(a.eleccion) : '', a.estado,
+    ].filter(Boolean).join(' '));
+    return texto.includes(t);
+  }
+
+  limpiarBusqueda() {
+    this.q.set('');
+  }
 
   suma = sumaVotos;
   fecha = fmtFecha;
